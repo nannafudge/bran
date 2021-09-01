@@ -2,10 +2,10 @@ import io
 
 import pytest
 
-from bran.decorators import schema, field
-from bran.exceptions import BranSerializerException
-from bran.loaders import Loader
-from bran.serializers import DefaultSerializer
+from pybran.decorators import schema, field
+from pybran.exceptions import BranSerializerException
+from pybran.loaders import Loader
+from pybran.serializers import DefaultSerializer
 
 
 @schema
@@ -23,6 +23,7 @@ class SimpleObject:
 @schema
 class NestedObject:
     test = field(SimpleObject())
+
 
 class ObjectNoFields:
     pass
@@ -53,6 +54,7 @@ def test_int_serializer():
     assert (isinstance(myint2, int))
     assert (myint == myint2)
 
+
 def test_float_serializer():
     myfloat = 2.1
 
@@ -64,6 +66,7 @@ def test_float_serializer():
 
     assert (isinstance(myfloat2, float))
     assert (myfloat == myfloat2)
+
 
 def test_string_serializer():
     mystring = "Hello, World!"
@@ -163,16 +166,10 @@ def test_default_serializer_nested_object():
 def test_no_serializer_defined():
     loader = Loader()
 
+    class NoSerializerDefined:
+        test = 1
+
     with pytest.raises(BranSerializerException) as exception:
-        loader.serialize(SimpleObject())
+        loader.serialize(NoSerializerDefined())
 
         assert str(SimpleObject) in exception.value
-
-
-def test_serialize_unregistered_type_with_tagging():
-    loader = Loader()
-
-    with pytest.raises(BranSerializerException) as exception:
-        DefaultSerializer().serialize(loader, ObjectNoFields(), tagging=True)
-
-        assert str(ObjectNoFields) in exception.value

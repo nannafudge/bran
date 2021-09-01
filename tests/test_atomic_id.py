@@ -2,7 +2,7 @@ import concurrent.futures
 
 import pytest
 
-from bran.decorators import Id, TypeId, NameId
+from pybran.decorators import Id, TypeId, NameId
 
 
 @pytest.fixture(autouse=True)

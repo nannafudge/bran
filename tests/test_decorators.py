@@ -1,7 +1,4 @@
-import pytest
-
-from bran.decorators import schema, field, class_registry, type_registry, name_registry, register_class
-from bran.exceptions import BranRegistrationException
+from pybran.decorators import schema, field, class_registry, type_registry, name_registry, register_class
 
 
 @schema
@@ -39,7 +36,7 @@ def test_no_field_decorator():
     assert not name_registry[MyObjectNoField]
 
 
-def test_manually_register_field():
+def test_manually_register_class():
     assert class_registry.keys().__contains__(MyObjectNoField)
     assert not class_registry[MyObjectNoField]
 
@@ -49,7 +46,6 @@ def test_manually_register_field():
     register_class(MyObjectNoField, {"test2": int})
 
     assert class_registry.keys().__contains__(MyObject)
-    assert class_registry[MyObjectNoField].keys().__contains__("test2")
     assert class_registry[MyObjectNoField]["test2"] == int
 
     assert type_registry[type_registry[int]] == int
@@ -58,6 +54,32 @@ def test_manually_register_field():
 
     assert MyObjectNoField().test2 == 2
 
+def test_manually_register_complex_class():
+    class ComplexClass:
+        test = [1, 2, 3]
+        test2 = {}
+
+    class NestedComplexClass:
+        nested = ComplexClass()
+        test = 1
+
+    register_class(NestedComplexClass, {"nested": NestedComplexClass.nested, "test": NestedComplexClass.test})
+    register_class(ComplexClass, {"test": ComplexClass.test, "test2": ComplexClass.test2})
+
+    assert class_registry.keys().__contains__(NestedComplexClass)
+    assert class_registry.keys().__contains__(ComplexClass)
+
+    assert class_registry[NestedComplexClass]["test"] == int
+    assert class_registry[NestedComplexClass]["nested"] == ComplexClass
+
+    assert class_registry[ComplexClass]["test"] == list
+    assert class_registry[ComplexClass]["test2"] == dict
+
+    assert type_registry[type_registry[NestedComplexClass]] == NestedComplexClass
+    assert type_registry[type_registry[ComplexClass]] == ComplexClass
+
+    assert name_registry[ComplexClass]["test"] == 1
+    assert name_registry[NestedComplexClass]["nested"] == 1
 
 def test_register_nested_object():
     assert class_registry.keys().__contains__(NestedObject)

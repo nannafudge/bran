@@ -46,6 +46,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
 *.cover
 *.py,cover
 .hypothesis/
@@ -109,6 +110,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+test
 
 # Spyder project settings
 .spyderproject

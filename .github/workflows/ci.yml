@@ -1,0 +1,42 @@
+name: Create Test Reports
+on:
+  push:
+    branches: [main]
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pylint coverage bandit
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Run PyTest
+        run: pytest -q --junit-xml=pytest.xml
+      - name: Run Coverage
+        run: |
+          coverage run
+          coverage json
+          coverage html
+      - name: Run PyLint
+        run: |
+          pylint --output-format=json --output=pylint.json
+          pylint --output-format=text --output=pylint.txt
+      - name: Run Bandit
+        run: |
+          bandit -r bran -f json -o bandit.json
+          bandit -r bran -f html -o bandit.html
+      - name: Upload Test Tool Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-reports
+          path: htmlcov pylint.txt pytest.xml bandit.html

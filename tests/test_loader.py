@@ -2,19 +2,20 @@ import builtins
 import io
 import struct
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from bran.decorators import schema, field
-from bran.exceptions import BranFileException, BranSerializerException
-from bran.loaders import Loader
-from bran.serializers import DefaultSerializer
+from pybran.decorators import schema, field
+from pybran.exceptions import BranFileException, BranSerializerException
+from pybran.loaders import Loader
+from pybran.serializers import DefaultSerializer
 
 
 @schema
 class MyObject:
     test = field(1)
+
 
 def test_read_file():
     loader = Loader()
@@ -24,7 +25,7 @@ def test_read_file():
     serialized = loader.serialize(obj)
 
     with patch.object(builtins, 'open', return_value=io.BytesIO(serialized)):
-        with patch.object(Path, 'exists', return_value=True):
+        with patch.object(Path, 'is_file', return_value=True):
             obj2 = loader.read("", MyObject)
 
             assert obj.test == obj2.test
@@ -39,6 +40,7 @@ def test_read_file_invalid_path():
 
         assert "mypath" in exception.value
 
+
 def test_write_file():
     loader = Loader()
     loader.register(MyObject, DefaultSerializer)
@@ -52,18 +54,29 @@ def test_write_file():
 
     with patch.object(raw_bytes, 'write', wraps=out):
         with patch.object(builtins, 'open', return_value=raw_bytes):
-            with patch.object(Path, 'exists', return_value=True):
+            with patch.object(Path, 'is_file', return_value=True):
                 loader.write("", obj)
 
 
-def test_write_file_invalid_path():
+def test_read_file_invalid_path():
     loader = Loader()
     loader.register(MyObject, DefaultSerializer)
 
     with pytest.raises(BranFileException) as exception:
-        loader.write("mypath", MyObject())
+        loader.read("myfile", MyObject)
 
-        assert "mypath" in exception.value
+        assert 'myfile' in exception.value
+
+
+def test_loader_tagged_primitive():
+    loader = Loader()
+
+    myint = 1
+    serialized = loader.serialize(myint, tagging=True)
+    myint2 = loader.deserialize(io.BytesIO(serialized), tagging=True)
+
+    assert (type(myint) == type(myint2))
+    assert (myint == myint2)
 
 def test_loader_tagged_flag():
     loader = Loader()
@@ -77,18 +90,23 @@ def test_loader_tagged_flag():
     assert (type(obj) == type(obj2))
     assert (obj.test == obj2.test)
 
+
 def test_loader_tagged_unknown_type_tag():
     loader = Loader()
 
     with pytest.raises(BranSerializerException) as exception:
-        loader.deserialize(io.BytesIO(struct.pack('h', 99)), tagging=True)
+        loader.deserialize(io.BytesIO(loader.serialize(99)), tagging=True)
 
         assert "99" in exception.value
+
 
 def test_serialize_unregistered_tagged_type():
     loader = Loader()
 
+    class NotRegistered:
+        test = 1
+
     with pytest.raises(BranSerializerException) as exception:
-        loader.serialize(MyObject(), tagging=True)
+        loader.serialize(NotRegistered(), tagging=True)
 
         assert str(MyObject) in exception.value

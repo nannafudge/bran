@@ -1,0 +1,22 @@
+[tool.pylint.REPORTS]
+output-format = "json"
+reports = "yes"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+command_line = "-m pytest"
+
+[tool.coverage.json]
+output = "coverage.json"
+
+[tool.bandit]
+include = ["bran/*.py"]
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>=42",
+    "wheel"
+]
