@@ -1,5 +1,7 @@
 import struct
 
+import pytest
+
 from bran.decorators import class_registry, type_registry, name_registry
 from bran.exceptions import BranSerializerException
 
@@ -23,23 +25,34 @@ class DefaultSerializer(Serializer):
         # buffer = loader.serialize(type_registry.get(obj.__class__), kwargs)
         buffer = b''
 
-        for name, field in fields:
-            buffer += loader.serialize(loader, name_registry.get(name), kwargs)
-            buffer += loader.serialize(loader, getattr(obj, name), kwargs)
+        for name, field in fields.items():
+            buffer += loader.serialize(name_registry[obj.__class__][name], **kwargs)
+            thing = loader.serialize(getattr(obj, name), **kwargs)
+
+            buffer += thing
 
         return buffer
 
     def deserialize(self, loader, cls, input, **kwargs):
-        fields = class_registry.get(cls, None)
-
-        if fields is None:
-            raise BranSerializerException("No fields registered for type", cls)
-
         obj = cls.__new__(cls)
-        for name, field in fields:
-            setattr(obj, name, loader.deserialize(loader, type_registry.get(field._id), input, kwargs))
+
+        size = len(input.getbuffer())
+
+        while size - input.tell() >= 4:
+            name = name_registry[cls][loader.deserialize(input, int, **kwargs)]
+            val = loader.deserialize(input, class_registry[cls][name], **kwargs)
+
+            setattr(obj, name, val)
 
         return obj
+
+
+class BoolSerializer(Serializer):
+    def serialize(self, loader, obj, **kwargs):
+        return struct.pack('?', obj)
+
+    def deserialize(self, loader, cls, input, **kwargs):
+        return struct.unpack('?', input.read(1))[0]
 
 
 class IntSerializer(Serializer):
@@ -47,7 +60,15 @@ class IntSerializer(Serializer):
         return struct.pack('i', obj)
 
     def deserialize(self, loader, cls, input, **kwargs):
-        return struct.unpack('i', input.read(4))
+        return struct.unpack('i', input.read(4))[0]
+
+
+class FloatSerializer(Serializer):
+    def serialize(self, loader, obj, **kwargs):
+        return struct.pack('d', obj)
+
+    def deserialize(self, loader, cls, input, **kwargs):
+        return struct.unpack('d', input.read(8))[0]
 
 
 class StringSerializer(Serializer):
@@ -55,9 +76,32 @@ class StringSerializer(Serializer):
         return struct.pack('h', len(obj)) + bytes(obj, "UTF-8")
 
     def deserialize(self, loader, cls, input, **kwargs):
-        len = struct.unpack('h', input.read(2))
+        len = struct.unpack('h', input.read(2))[0]
 
         return input.read(len).decode("UTF-8")
+
+
+class SetSerializer(Serializer):
+    def serialize(self, loader, obj, **kwargs):
+        buffer = b''
+        buffer += struct.pack('h', len(obj))
+
+        for item in obj:
+            buffer += struct.pack('h', type_registry.get(type(item)))
+            buffer += loader.serialize(item, **kwargs)
+
+        return buffer
+
+    def deserialize(self, loader, cls, input, **kwargs):
+        _set = set()
+
+        length = struct.unpack('h', input.read(2))[0]
+
+        for i in range(0, length):
+            item_type = struct.unpack('h', input.read(2))[0]
+            _set.add(loader.deserialize(input, type_registry.get(item_type), **kwargs))
+
+        return _set
 
 
 # TODO: Optimise for maps where k,v pairs are strictly typed, so will only need to write one key_id, val_id for entire map
@@ -68,10 +112,12 @@ class MappingSerializer(Serializer):
 
         for key, value in obj.items():
             buffer += struct.pack('h', type_registry.get(type(key)))
-            buffer += loader.serialize(loader, key, kwargs)
+            buffer += loader.serialize(key, **kwargs)
 
             buffer += struct.pack('h', type_registry.get(type(value)))
-            buffer += loader.serialize(loader, value, kwargs)
+            buffer += loader.serialize(value, **kwargs)
+
+        return buffer
 
     def deserialize(self, loader, cls, input, **kwargs):
         obj = {}
@@ -79,10 +125,10 @@ class MappingSerializer(Serializer):
         length = struct.unpack('h', input.read(2))[0]
         for i in range(0, length):
             key_type = struct.unpack('h', input.read(2))[0]
-            key = loader.deserialize(loader, type_registry.get(key_type), input, kwargs)
+            key = loader.deserialize(input, type_registry.get(key_type), **kwargs)
 
             val_type = struct.unpack('h', input.read(2))[0]
-            val = loader.deserialize(loader, type_registry.get(val_type), input, kwargs)
+            val = loader.deserialize(input, type_registry.get(val_type), **kwargs)
 
             obj[key] = val
 
@@ -101,7 +147,7 @@ class ArraySerializer(Serializer):
             # Write Index
             buffer += struct.pack("h", i)
             # Write item
-            buffer += loader.serialize(loader, obj[i], kwargs)
+            buffer += loader.serialize(obj[i], **kwargs)
 
         return buffer
 
@@ -109,10 +155,12 @@ class ArraySerializer(Serializer):
         obj = []
 
         length = struct.unpack('h', input.read(2))[0]
+        obj.extend(range(length))
+
         for i in range(0, length):
             item_type = struct.unpack('h', input.read(2))[0]
             item_index = struct.unpack('h', input.read(2))[0]
 
-            obj[item_index] = loader.deserialize(loader, type_registry.get(item_type), input, kwargs)
+            obj[item_index] = loader.deserialize(input, type_registry.get(item_type), **kwargs)
 
         return obj

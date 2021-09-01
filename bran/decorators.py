@@ -1,8 +1,11 @@
+from collections import namedtuple
+
+from bran.exceptions import BranRegistrationException
 from bran.synchronized import synchronized
 
-class_registry = {}
-type_registry = {}
-name_registry = {}
+class_registry = synchronized({})
+type_registry = synchronized({})
+name_registry = synchronized({})
 
 
 class Id:
@@ -23,39 +26,77 @@ class Id:
         self._id += 1
         return self._id
 
+    @synchronized
+    def reset(self):
+        self._id = 0
+
 
 class TypeId(Id):
-    pass
+    _instance = None
 
 
 class NameId(Id):
-    pass
+    _instance = None
+
+
+class Field:
+    def __init__(self, val):
+        self._val = val
+
+
+def register_class(cls: type, fields=None):
+    if fields is None:
+        fields = {}
+
+    class_registry[cls] = {}
+    name_registry[cls] = {}
+
+    register_type(cls)
+
+    NameId.instance().reset()
+
+    if not fields:
+        autoregistered_fields = {}
+
+        for name, field in cls.__dict__.items():
+            if isinstance(field, Field):
+                autoregistered_fields[name] = field._val
+
+        fields.update(autoregistered_fields)
+        for name, val in autoregistered_fields.items():
+            setattr(cls, name, val)
+
+    for name, val in fields.items():
+        # Python allows for fields to be added willy nilly so whatever on this check
+        # if not hasattr(cls, name):
+        #    raise BranRegistrationException(f"Tried to register unrecognised field, {str(cls)} has no field {name}!", cls)
+
+        register_field(cls, name, val if isinstance(val, type) else type(val))
+
+
+def register_field(cls: type, name: str, value: type):
+    class_registry[cls][name] = value
+
+    register_type(value)
+    register_field_name(cls, name)
+
+
+def register_type(_type: type):
+    if not type_registry.__contains__(_type):
+        type_registry[_type] = TypeId.instance().get_id()
+    type_registry[type_registry[_type]] = _type
+
+def register_field_name(cls: type, name: str):
+    if not name_registry[cls].__contains__(name):
+        name_registry[cls][name] = NameId.instance().get_id()
+    name_registry[cls][name_registry[cls][name]] = name
 
 
 def schema(cls):
-    class_registry[cls] = {}
-
-    for name, field in cls.__dict__.items():
-        if isinstance(field, Field):
-            _name = field._name if field._name is not None else name
-
-            class_registry[cls][_name] = field
-
-            type_registry[field._val.__class__] = field._id
-            type_registry[field._id] = field._val.__class__
-
-            name_registry[_name] = name_registry.get(_name, NameId.instance().get_id())
-            name_registry[name_registry.get(_name)] = _name
+    register_class(cls)
 
     return cls
 
 
-class Field:
-    def __init__(self, val, name):
-        self._id = type_registry.get(val.__class__, TypeId.instance().get_id())
-        self._name = name
-        self._val = val
-
-
-def field(val, name=None):
-    return Field(val, name)
+def field(val):
+    return Field(val)
