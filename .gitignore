@@ -51,6 +51,9 @@ coverage.json
 *.py,cover
 .hypothesis/
 .pytest_cache/
+bandit.json
+pylint.json
+pytest.xml
 
 # Translations
 *.mo

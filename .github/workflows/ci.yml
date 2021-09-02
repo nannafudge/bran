@@ -24,13 +24,26 @@ jobs:
         run: python static_analysis.py
       - name: Run Bandit
         run: bandit -r bran -f json -o bandit.json
-      - name: Upload PyLint Badge
-        uses: actions/upload-artifact@v2
-        with:
-          name: pylint.svg
-          path: ${{ github.workspace }}/pylint.svg
       - name: Upload Coverage Badge
+        uses: exuanbo/actions-deploy-gist@v1.0.4
+        with:
+          token: ${{ secrets.TOKEN }}
+          gist_id: 1537485abce2009252beb4f346dea43b
+          gist_file_name: coverage.svg
+          file_path: ${{ github.workspace }}/coverage.svg
+      - name: Upload PyLint Badge
+        uses: exuanbo/actions-deploy-gist@v1.0.4
+        with:
+          token: ${{ secrets.TOKEN }}
+          gist_id: 1537485abce2009252beb4f346dea43b
+          gist_file_name: pylint.svg
+          file_path: ${{ github.workspace }}/pylint.svg
+      - name: Upload Test Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: coverage.svg
-          path: ${{ github.workspace }}/coverage.svg
+          name: test-results
+          path: |
+            ${{ github.workspace }}/pytest.xml
+            ${{ github.workspace }}/pylint.json
+            ${{ github.workspace }}/bandit.json
+            ${{ github.workspace }}/htmlcov

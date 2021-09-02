@@ -12,6 +12,8 @@ this library.
 
 [![CI Status](https://github.com/nannafudge/bran/actions/workflows/ci.yml/badge.svg)](https://github.com/nannafudge/bran/actions/workflows/ci.yml)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+![PyLint Score](https://gist.githubusercontent.com/nannafudge/1537485abce2009252beb4f346dea43b/raw/pylint.svg)
+![Coverage %](https://gist.githubusercontent.com/nannafudge/1537485abce2009252beb4f346dea43b/raw/coverage.svg)
 
 ## Installing
 

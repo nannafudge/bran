@@ -8,7 +8,7 @@ from pylint import lint
 
 if __name__ == "__main__":
     print("Running PyLint...")
-    pylint_result = lint.Run(['pybran'], do_exit=False)
+    pylint_result = lint.Run(['pybran', '--output', 'pylint.json'], do_exit=False)
     print("Pylint Result:", pylint_result)
 
     print("Generating PyLint Badge")
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     _coverage = coverage.Coverage()
     _coverage.start()
 
-    ret = pytest.main(["tests"])
+    ret = pytest.main(["tests", "--junit-xml", "pytest.xml"])
 
     _coverage.stop()
 
@@ -30,5 +30,8 @@ if __name__ == "__main__":
     print("Coverage Result:", coverage_result)
     coverage_badge = anybadge.Badge('coverage', str(round(coverage_result)) + "%")
     coverage_badge.write_badge('coverage.svg', overwrite=True)
+
+    print("Generating HTML Reports")
+    _coverage.html_report()
 
     exit(ret)
