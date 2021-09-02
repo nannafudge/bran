@@ -48,9 +48,7 @@ class DefaultSerializer(Serializer):
         buffer = b''
         for name in fields.keys():
             buffer += loader.serialize(name_registry.get(type(obj)).get(name), **kwargs)
-            thing = loader.serialize(getattr(obj, name), **kwargs)
-
-            buffer += thing
+            buffer += loader.serialize(getattr(obj, name), **kwargs)
 
         return buffer
 

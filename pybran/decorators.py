@@ -105,7 +105,7 @@ class Registry:
         :return: The registry entry for the key
         """
         if not self.contains(key):
-            if autoregister is True:
+            if autoregister:
                 self.add(key)
             else:
                 raise BranRegistrationException(f"No entry for {key} registered!", key)

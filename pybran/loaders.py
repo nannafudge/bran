@@ -18,10 +18,12 @@ DEFAULT_SERIALIZER_REGISTRY = {
     list: ArraySerializer
 }
 
+
 class Loader:
     """
     Loader class responsible for loading/writing objects to files and serializing/deserializing objects
     """
+
     def __init__(self, serializer_registry=None):
         """
         Initialise a new Loader object
