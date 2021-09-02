@@ -30,14 +30,14 @@ jobs:
           token: ${{ secrets.TOKEN }}
           gist_id: 1537485abce2009252beb4f346dea43b
           gist_file_name: coverage.svg
-          file_path: ${{ github.workspace }}/coverage.svg
+          file_path: coverage.svg
       - name: Upload PyLint Badge
         uses: exuanbo/actions-deploy-gist@v1.0.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           gist_id: 1537485abce2009252beb4f346dea43b
           gist_file_name: pylint.svg
-          file_path: ${{ github.workspace }}/pylint.svg
+          file_path: pylint.svg
       - name: Upload Test Artifacts
         uses: actions/upload-artifact@v2
         with:
