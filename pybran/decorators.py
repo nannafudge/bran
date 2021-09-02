@@ -5,11 +5,8 @@ which attributes are member variables.
 """
 from pybran.synchronized import synchronized
 
-class_registry = synchronized({})
-type_registry = synchronized({})
-name_registry = synchronized({})
 
-
+@synchronized
 class Id:
     """
     Singleton base class for Atomic IDs
@@ -18,23 +15,14 @@ class Id:
     _instance = None
 
     def __init__(self):
-        """
-        Not to be called
-        """
-        raise RuntimeError("Cannot instantiate Singleton class")
+        pass
 
-    @classmethod
-    def instance(cls):
-        """
-
-        :return: Atomic ID object instance
-        """
-        if cls._instance is None:
-            cls._instance = cls.__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Id, cls).__new__(cls, *args, **kwargs)
             cls._instance._id = 0
         return cls._instance
 
-    @synchronized
     def get_id(self):
         """
         Thread Safe
@@ -43,17 +31,11 @@ class Id:
         :return:  int
         """
         self._id += 1
+
         return self._id
 
-    @synchronized
-    def reset(self):
-        """
-        Thread Safe
-        Resets the Atomic ID value
-        """
-        self._id = 0
 
-
+@synchronized
 class TypeId(Id):
     """
     Atomic ID class for tracking Type enumerations
@@ -61,13 +43,26 @@ class TypeId(Id):
 
     _instance = None
 
+    def __new__(cls, *args, **kwargs):
+        return super(TypeId, cls).__new__(cls, *args, **kwargs)
 
+
+@synchronized
 class NameId(Id):
     """
     Atomic ID class for tracking field Name enumerations
     """
 
     _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        return super(NameId, cls).__new__(cls, *args, **kwargs)
+
+    def reset(self):
+        """
+        Resets the internal atomic counter
+        """
+        self._id = 0
 
 
 class Field:
@@ -83,6 +78,11 @@ class Field:
         self.val = val
 
 
+class_registry = {}
+type_registry = {}
+name_registry = {}
+
+
 def register_class(cls: type, fields=None):
     """
 
@@ -95,19 +95,19 @@ def register_class(cls: type, fields=None):
     if fields is None:
         fields = {}
 
-    class_registry[cls] = {}
-    name_registry[cls] = {}
+    class_registry.__setitem__(cls, {})
+    name_registry.__setitem__(cls, {})
 
     register_type(cls)
 
-    NameId.instance().reset()
+    NameId().reset()
 
     if not fields:
         autoregistered_fields = {}
 
         for name, _field in cls.__dict__.items():
             if isinstance(_field, Field):
-                autoregistered_fields[name] = _field.val
+                autoregistered_fields.__setitem__(name, _field.val)
 
         fields.update(autoregistered_fields)
 
@@ -132,7 +132,7 @@ def register_field(cls: type, name: str, _type: type):
     :param name: The name of the field
     :param _type: The type of the value of the field
     """
-    class_registry[cls][name] = _type
+    class_registry.get(cls).__setitem__(name, _type)
 
     register_type(_type)
     register_field_name(cls, name)
@@ -150,8 +150,8 @@ def register_type(_type: type):
     :param _type: The type we're registering an enumeration for
     """
     if not type_registry.__contains__(_type):
-        type_registry[_type] = TypeId.instance().get_id()
-    type_registry[type_registry[_type]] = _type
+        type_registry.__setitem__(_type, TypeId().get_id())
+    type_registry.__setitem__(type_registry.get(_type), _type)
 
 
 def register_field_name(cls: type, name: str):
@@ -165,9 +165,9 @@ def register_field_name(cls: type, name: str):
     :param cls: The class who's field we're registering
     :param name: The name of the field we're registering an enumeration for
     """
-    if not name_registry[cls].__contains__(name):
-        name_registry[cls][name] = NameId.instance().get_id()
-    name_registry[cls][name_registry[cls][name]] = name
+    if not name_registry.get(cls).__contains__(name):
+        name_registry.get(cls).__setitem__(name, NameId().get_id())
+    name_registry.get(cls).__setitem__(name_registry.get(cls).get(name), name)
 
 
 def schema(cls):

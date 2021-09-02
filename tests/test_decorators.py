@@ -16,85 +16,85 @@ class NestedObject:
     test3 = field(MyObject())
 
 
-def test_field_decorator():
-    assert class_registry.keys().__contains__(MyObject)
-    assert class_registry[MyObject].keys().__contains__("test")
-    assert class_registry[MyObject]["test"] == int
-
-    assert type_registry[type_registry[int]] == int
-    assert name_registry[MyObject]["test"] == 1
-    assert name_registry[MyObject][1] == "test"
-
-    assert MyObject().test == 1
+class ComplexClass:
+    test = [1, 2, 3]
+    test2 = {}
 
 
-def test_no_field_decorator():
-    assert class_registry.keys().__contains__(MyObjectNoField)
-    assert not class_registry[MyObjectNoField]
-
-    assert name_registry.__contains__(MyObjectNoField)
-    assert not name_registry[MyObjectNoField]
+class NestedComplexClass:
+    nested = ComplexClass()
+    test = 1
 
 
-def test_manually_register_class():
-    assert class_registry.keys().__contains__(MyObjectNoField)
-    assert not class_registry[MyObjectNoField]
+class TestDecorators:
+    def test_field_decorator(self):
+        assert class_registry.keys().__contains__(MyObject)
+        assert class_registry[MyObject].keys().__contains__("test")
+        assert class_registry[MyObject]["test"] == int
 
-    assert name_registry.__contains__(MyObjectNoField)
-    assert not name_registry[MyObjectNoField]
+        assert type_registry[type_registry[int]] == int
+        assert name_registry[MyObject]["test"] == 1
+        assert name_registry[MyObject][1] == "test"
 
-    register_class(MyObjectNoField, {"test2": int})
+        assert MyObject().test == 1
 
-    assert class_registry.keys().__contains__(MyObject)
-    assert class_registry[MyObjectNoField]["test2"] == int
+    def test_no_field_decorator(self):
+        assert class_registry.keys().__contains__(MyObjectNoField)
+        assert not class_registry[MyObjectNoField]
 
-    assert type_registry[type_registry[int]] == int
-    assert name_registry[MyObjectNoField]["test2"] == 1
-    assert name_registry[MyObjectNoField][1] == "test2"
+        assert name_registry.__contains__(MyObjectNoField)
+        assert not name_registry[MyObjectNoField]
 
-    assert MyObjectNoField().test2 == 2
+    def test_manually_register_class(self):
+        assert class_registry.keys().__contains__(MyObjectNoField)
+        assert not class_registry[MyObjectNoField]
 
-def test_manually_register_complex_class():
-    class ComplexClass:
-        test = [1, 2, 3]
-        test2 = {}
+        assert name_registry.__contains__(MyObjectNoField)
+        assert not name_registry[MyObjectNoField]
 
-    class NestedComplexClass:
-        nested = ComplexClass()
-        test = 1
+        register_class(MyObjectNoField, {"test2": int})
 
-    register_class(NestedComplexClass, {"nested": NestedComplexClass.nested, "test": NestedComplexClass.test})
-    register_class(ComplexClass, {"test": ComplexClass.test, "test2": ComplexClass.test2})
+        assert class_registry.keys().__contains__(MyObjectNoField)
+        assert class_registry[MyObjectNoField]["test2"] == int
 
-    assert class_registry.keys().__contains__(NestedComplexClass)
-    assert class_registry.keys().__contains__(ComplexClass)
+        assert type_registry[type_registry[int]] == int
+        assert name_registry[MyObjectNoField]["test2"] == 1
+        assert name_registry[MyObjectNoField][1] == "test2"
 
-    assert class_registry[NestedComplexClass]["test"] == int
-    assert class_registry[NestedComplexClass]["nested"] == ComplexClass
+        assert MyObjectNoField().test2 == 2
 
-    assert class_registry[ComplexClass]["test"] == list
-    assert class_registry[ComplexClass]["test2"] == dict
+    def test_manually_register_complex_class(self):
+        register_class(NestedComplexClass, {"nested": NestedComplexClass.nested, "test": NestedComplexClass.test})
+        register_class(ComplexClass, {"test": ComplexClass.test, "test2": ComplexClass.test2})
 
-    assert type_registry[type_registry[NestedComplexClass]] == NestedComplexClass
-    assert type_registry[type_registry[ComplexClass]] == ComplexClass
+        assert class_registry.keys().__contains__(NestedComplexClass)
+        assert class_registry.keys().__contains__(ComplexClass)
 
-    assert name_registry[ComplexClass]["test"] == 1
-    assert name_registry[NestedComplexClass]["nested"] == 1
+        assert class_registry[NestedComplexClass]["test"] == int
+        assert class_registry[NestedComplexClass]["nested"] == ComplexClass
 
-def test_register_nested_object():
-    assert class_registry.keys().__contains__(NestedObject)
-    assert class_registry[NestedObject]["test3"] == MyObject
+        assert class_registry[ComplexClass]["test"] == list
+        assert class_registry[ComplexClass]["test2"] == dict
 
-    assert type_registry[type_registry[MyObject]] == MyObject
-    assert name_registry[NestedObject]["test3"] == 1
-    assert name_registry[NestedObject][1] == "test3"
+        assert type_registry[type_registry[NestedComplexClass]] == NestedComplexClass
+        assert type_registry[type_registry[ComplexClass]] == ComplexClass
 
-    assert isinstance(NestedObject().test3, MyObject)
+        assert name_registry[ComplexClass]["test"] == 1
+        assert name_registry[NestedComplexClass]["nested"] == 1
 
+    def test_register_nested_object(self):
+        assert class_registry.keys().__contains__(NestedObject)
+        assert class_registry[NestedObject]["test3"] == MyObject
 
-def test_add_existing_type():
-    register_class(MyObject, {"test": int })
-    assert type_registry[int] == 2
+        assert type_registry[type_registry[MyObject]] == MyObject
+        assert name_registry[NestedObject]["test3"] == 1
+        assert name_registry[NestedObject][1] == "test3"
 
-    register_class(MyObjectNoField, {"test2": int})
-    assert type_registry[int] == 2
+        assert isinstance(NestedObject().test3, MyObject)
+
+    def test_add_existing_type(self):
+        register_class(MyObject, {"test": int})
+        assert type_registry[int] == 2
+
+        register_class(MyObjectNoField, {"test2": int})
+        assert type_registry[int] == 2

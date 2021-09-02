@@ -29,147 +29,139 @@ class ObjectNoFields:
     pass
 
 
-def test_bool_serializer():
-    mybool = True
+class TestSerializers:
+    def test_bool_serializer(self):
+        mybool = True
 
-    loader = Loader()
+        loader = Loader()
 
-    serialized = loader.serialize(mybool)
+        serialized = loader.serialize(mybool)
 
-    mybool2 = loader.deserialize(io.BytesIO(serialized), bool)
+        mybool2 = loader.deserialize(io.BytesIO(serialized), bool)
 
-    assert (isinstance(mybool2, bool))
-    assert (mybool == mybool2)
+        assert (isinstance(mybool2, bool))
+        assert (mybool == mybool2)
 
+    def test_int_serializer(self):
+        myint = 1
 
-def test_int_serializer():
-    myint = 1
+        loader = Loader()
 
-    loader = Loader()
+        serialized = loader.serialize(myint)
 
-    serialized = loader.serialize(myint)
+        myint2 = loader.deserialize(io.BytesIO(serialized), int)
 
-    myint2 = loader.deserialize(io.BytesIO(serialized), int)
+        assert (isinstance(myint2, int))
+        assert (myint == myint2)
 
-    assert (isinstance(myint2, int))
-    assert (myint == myint2)
+    def test_float_serializer(self):
+        myfloat = 2.1
 
+        loader = Loader()
 
-def test_float_serializer():
-    myfloat = 2.1
+        serialized = loader.serialize(myfloat)
 
-    loader = Loader()
+        myfloat2 = loader.deserialize(io.BytesIO(serialized), float)
 
-    serialized = loader.serialize(myfloat)
+        assert (isinstance(myfloat2, float))
+        assert (myfloat == myfloat2)
 
-    myfloat2 = loader.deserialize(io.BytesIO(serialized), float)
+    def test_string_serializer(self):
+        mystring = "Hello, World!"
 
-    assert (isinstance(myfloat2, float))
-    assert (myfloat == myfloat2)
+        loader = Loader()
 
+        serialized = loader.serialize(mystring)
 
-def test_string_serializer():
-    mystring = "Hello, World!"
+        mystring2 = loader.deserialize(io.BytesIO(serialized), str)
 
-    loader = Loader()
+        assert (isinstance(mystring2, str))
+        assert (mystring == mystring2)
 
-    serialized = loader.serialize(mystring)
+    def test_set_serializer(self):
+        myset = {"a", "b", "c"}
 
-    mystring2 = loader.deserialize(io.BytesIO(serialized), str)
+        loader = Loader()
 
-    assert (isinstance(mystring2, str))
-    assert (mystring == mystring2)
+        serialized = loader.serialize(myset)
 
+        myset2 = loader.deserialize(io.BytesIO(serialized), set)
 
-def test_set_serializer():
-    myset = {"a", "b", "c"}
+        assert (isinstance(myset2, set))
+        assert (myset == myset2)
 
-    loader = Loader()
+    def test_dict_serializer(self):
+        mydict = {"a": "b", 1: 2, 2: True, "3": 4}
 
-    serialized = loader.serialize(myset)
+        loader = Loader()
 
-    myset2 = loader.deserialize(io.BytesIO(serialized), set)
+        serialized = loader.serialize(mydict)
 
-    assert (isinstance(myset2, set))
-    assert (myset == myset2)
+        mydict2 = loader.deserialize(io.BytesIO(serialized), dict)
 
+        assert (isinstance(mydict2, dict))
+        assert (mydict == mydict2)
 
-def test_dict_serializer():
-    mydict = {"a": "b", 1: 2, 2: True, "3": 4}
+    def test_list_serializer(self):
+        mylist = ["a", 1, True, 2.5, {"a": 1}, {"test": "set"}, [1, 2, 3, 4]]
 
-    loader = Loader()
+        loader = Loader()
 
-    serialized = loader.serialize(mydict)
+        serialized = loader.serialize(mylist)
 
-    mydict2 = loader.deserialize(io.BytesIO(serialized), dict)
+        mylist2 = loader.deserialize(io.BytesIO(serialized), list)
 
-    assert (isinstance(mydict2, dict))
-    assert (mydict == mydict2)
+        assert (isinstance(mylist2, list))
+        assert (mylist == mylist2)
 
+    def test_default_serializer(self):
+        obj = SimpleObject()
+        loader = Loader()
 
-def test_list_serializer():
-    mylist = ["a", 1, True, 2.5, {"a": 1}, {"test": "set"}, [1, 2, 3, 4]]
+        loader.register(SimpleObject, DefaultSerializer)
 
-    loader = Loader()
+        serialized = loader.serialize(obj)
 
-    serialized = loader.serialize(mylist)
+        obj2 = loader.deserialize(io.BytesIO(serialized), SimpleObject)
+        assert (isinstance(obj2, SimpleObject))
 
-    mylist2 = loader.deserialize(io.BytesIO(serialized), list)
+        assert (obj.test == obj2.test)
+        assert (obj.test2 == obj2.test2)
+        assert (obj.test3 == obj2.test3)
+        assert (obj.test4 == obj2.test4)
+        assert (obj.mapping == obj2.mapping)
+        assert (obj.collection == obj2.collection)
+        assert (obj.set == obj2.set)
+        assert (len(obj2.__dict__.keys()) == 7)
 
-    assert (isinstance(mylist2, list))
-    assert (mylist == mylist2)
+    def test_default_serializer_nested_object(self):
+        obj = NestedObject()
+        loader = Loader()
 
+        loader.register(SimpleObject, DefaultSerializer)
+        loader.register(NestedObject, DefaultSerializer)
 
-def test_default_serializer():
-    obj = SimpleObject()
-    loader = Loader()
+        serialized = loader.serialize(obj)
 
-    loader.register(SimpleObject, DefaultSerializer)
+        obj2 = loader.deserialize(io.BytesIO(serialized), NestedObject)
 
-    serialized = loader.serialize(obj)
+        assert isinstance(obj2, NestedObject)
+        assert isinstance(obj2.test, SimpleObject)
+        assert obj2.test.test == obj.test.test
+        assert obj2.test.test2 == obj.test.test2
+        assert obj2.test.test3 == obj.test.test3
+        assert obj2.test.test4 == obj.test.test4
+        assert obj2.test.mapping == obj.test.mapping
+        assert obj2.test.collection == obj.test.collection
+        assert obj2.test.set == obj.test.set
 
-    obj2 = loader.deserialize(io.BytesIO(serialized), SimpleObject)
-    assert (isinstance(obj2, SimpleObject))
+    def test_no_serializer_defined(self):
+        loader = Loader()
 
-    assert (obj.test == obj2.test)
-    assert (obj.test2 == obj2.test2)
-    assert (obj.test3 == obj2.test3)
-    assert (obj.test4 == obj2.test4)
-    assert (obj.mapping == obj2.mapping)
-    assert (obj.collection == obj2.collection)
-    assert (obj.set == obj2.set)
-    assert (len(obj2.__dict__.keys()) == 7)
+        class NoSerializerDefined:
+            test = 1
 
+        with pytest.raises(BranSerializerException) as exception:
+            loader.serialize(NoSerializerDefined())
 
-def test_default_serializer_nested_object():
-    obj = NestedObject()
-    loader = Loader()
-
-    loader.register(SimpleObject, DefaultSerializer)
-    loader.register(NestedObject, DefaultSerializer)
-
-    serialized = loader.serialize(obj)
-
-    obj2 = loader.deserialize(io.BytesIO(serialized), NestedObject)
-
-    assert isinstance(obj2, NestedObject)
-    assert isinstance(obj2.test, SimpleObject)
-    assert obj2.test.test == obj.test.test
-    assert obj2.test.test2 == obj.test.test2
-    assert obj2.test.test3 == obj.test.test3
-    assert obj2.test.test4 == obj.test.test4
-    assert obj2.test.mapping == obj.test.mapping
-    assert obj2.test.collection == obj.test.collection
-    assert obj2.test.set == obj.test.set
-
-
-def test_no_serializer_defined():
-    loader = Loader()
-
-    class NoSerializerDefined:
-        test = 1
-
-    with pytest.raises(BranSerializerException) as exception:
-        loader.serialize(NoSerializerDefined())
-
-        assert str(SimpleObject) in exception.value
+            assert str(SimpleObject) in exception.value

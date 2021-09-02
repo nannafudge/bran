@@ -1,34 +1,24 @@
 import concurrent.futures
 
-import pytest
-
 from pybran.decorators import Id, TypeId, NameId
 
 
-@pytest.fixture(autouse=True)
-def reset_id():
-    Id.instance().reset()
-    TypeId.instance().reset()
-    NameId.instance().reset()
+class TestAtomicId:
+    def test_atomic_id(self):
+        assert Id().get_id() == 1
+        assert Id().get_id() == 2
 
+    def test_type_id_and_name_id_not_linked(self):
+        type_id = TypeId().get_id()
+        NameId().get_id()
 
-def test_atomic_id():
-    assert Id.instance().get_id() == 1
-    assert Id.instance().get_id() == 2
+        assert TypeId().get_id() == type_id + 1
 
+    def test_id_from_another_thread(self):
+        results = None
 
-def test_type_id_and_name_id():
-    assert TypeId.instance().get_id() == 1
-    assert TypeId.instance().get_id() == 2
-    assert NameId.instance().get_id() == 1
-    assert NameId.instance().get_id() == 2
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            results = executor.map(lambda i: Id().get_id(), range(3))
 
-
-def test_id_from_another_thread():
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        results = [result for result in executor.map(_id, range(3))]
-        assert results == [1, 2, 3]
-
-
-def _id(i):
-    return Id.instance().get_id()
+            # Assert we receive 3 unique results
+            assert len({result for result in results}) == 3

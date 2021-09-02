@@ -1,15 +1,15 @@
 """
 Module for classes and methods pertaining to multithreading
 """
-
-
 import threading
 import logging
+
+import inspect
 
 logger = logging.getLogger("synchronized")
 
 
-def synchronized(func, lock=threading.Lock()):
+def synchronized(func, lock=None):
     """
     Wraps an object/function in a thread safe wrapper
 
@@ -18,28 +18,39 @@ def synchronized(func, lock=threading.Lock()):
 
     :return: Synchronized version of :param func:
     """
-    if hasattr(func, "__call__"):
-        if not hasattr(func, "__lock__"):
-            func.__lock__ = lock
 
-        def synced_func(*args, **kws):
-            with func.__lock__:
-                return func(*args, **kws)
+    if lock is None:
+        logger.info("Creating new lock for class %s", str(func))
+        lock = threading.Lock()
 
-        return synced_func
-
-    callables = {}
-    for attr in dir(func):
-        if hasattr(func, attr):
-            _attr = getattr(func, attr)
-            if hasattr(_attr, "__call__"):
-                callables[attr] = _attr
-
-    for name, _callable in callables.items():
+    if inspect.isroutine(func):
         try:
-            _callable.__lock__ = lock
-            setattr(func, name, synchronized(_callable, lock))
+            logger.info("Registering function %s with lock %s", str(func), str(lock))
+
+            setattr(func, "__lock__", lock)
+
+            def synced_func(*args, **kwargs):
+                if hasattr(func, "__lock__") and getattr(func, "__lock__").locked():
+                    return func(*args, **kwargs)
+
+                with getattr(func, "__lock__"):
+                    logger.info("Executing function %s with lock %s", str(func), str(lock))
+                    return func(*args, **kwargs)
+
+            setattr(synced_func, "__lock__", lock)
+
+            return synced_func
+        except BaseException:
+            logger.warning("Unable to register function %s with lock %s", str(func), str(lock))
+
+            return func
+
+    methods = inspect.getmembers(func, lambda o: inspect.isroutine(o))
+
+    for member in methods:
+        try:
+            setattr(func, member[0], synchronized(member[1], lock))
         except (TypeError, AttributeError):
-            logger.warning("Unable to add lock to callable %s", str(_callable))
+            logger.warning("Unable to add lock to function %s", str(member[1]))
 
     return func

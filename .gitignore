@@ -131,3 +131,7 @@ dmypy.json
 .pyre/
 
 .idea
+
+# Badge Outputs
+pylint.svg
+coverage.svg
