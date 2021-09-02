@@ -27,7 +27,7 @@ jobs:
       - name: Upload Coverage Badge
         uses: exuanbo/actions-deploy-gist@v1.0.4
         with:
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           gist_id: 1537485abce2009252beb4f346dea43b
           gist_file_name: coverage.svg
           file_path: coverage.svg
