@@ -23,11 +23,14 @@ jobs:
       - name: Run Static Analysis
         run: python static_analysis.py
       - name: Run Bandit
-        run: bandit -r bran
-      - name: Upload Test Tool Results
+        run: bandit -r bran -f json -o bandit.json
+      - name: Upload PyLint Badge
         uses: actions/upload-artifact@v2
         with:
-          name: badges
-          path: |
-            ${{ github.workspace }}/pylint.svg
-            ${{ github.workspace }}/coverage.svg
+          name: pylint.svg
+          path: ${{ github.workspace }}/pylint.svg
+      - name: Upload Coverage Badge
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage.svg
+          path: ${{ github.workspace }}/coverage.svg
