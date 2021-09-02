@@ -16,7 +16,7 @@ class Serializer:
         Attempt to serialize a type/object
 
         :param loader: The loader that invoked the method
-        :param object: The object to serialize
+        :param obj: The object to serialize
         :param **kwargs: Additional arguments to be passed to serialize
 
         :rtype: Serialized version of :obj:
@@ -45,12 +45,9 @@ class DefaultSerializer(Serializer):
         if fields is None:
             raise BranSerializerException("No fields registered for type", obj)
 
-        # TODO: Add ability to unpack unregistered types?
-        # buffer = loader.serialize(type_registry.get(obj.__class__), kwargs)
         buffer = b''
-
         for name in fields.keys():
-            buffer += loader.serialize(name_registry[type(obj)][name], **kwargs)
+            buffer += loader.serialize(name_registry.get(type(obj)).get(name), **kwargs)
             thing = loader.serialize(getattr(obj, name), **kwargs)
 
             buffer += thing
@@ -63,8 +60,8 @@ class DefaultSerializer(Serializer):
         size = len(data.getbuffer())
 
         while size - data.tell() >= 4:
-            name = name_registry[cls][loader.deserialize(data, int, **kwargs)]
-            val = loader.deserialize(data, class_registry[cls][name], **kwargs)
+            name = name_registry.get(cls).get(loader.deserialize(data, int, **kwargs))
+            val = loader.deserialize(data, class_registry.get(cls).get(name), **kwargs)
 
             setattr(obj, name, val)
 
@@ -126,7 +123,7 @@ class SetSerializer(Serializer):
         buffer += struct.pack('h', len(obj))
 
         for item in obj:
-            buffer += struct.pack('h', type_registry.get(type(item)))
+            buffer += struct.pack('h', type_registry.get(type(item), autoregister=True))
             buffer += loader.serialize(item, **kwargs)
 
         return buffer
@@ -153,10 +150,10 @@ class MappingSerializer(Serializer):
         buffer += struct.pack('h', len(obj))
 
         for key, value in obj.items():
-            buffer += struct.pack('h', type_registry.get(type(key)))
+            buffer += struct.pack('h', type_registry.get(type(key), autoregister=True))
             buffer += loader.serialize(key, **kwargs)
 
-            buffer += struct.pack('h', type_registry.get(type(value)))
+            buffer += struct.pack('h', type_registry.get(type(value), autoregister=True))
             buffer += loader.serialize(value, **kwargs)
 
         return buffer

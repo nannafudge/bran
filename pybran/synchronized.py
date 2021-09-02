@@ -45,7 +45,7 @@ def synchronized(func, lock=None):
 
             return func
 
-    methods = inspect.getmembers(func, lambda o: inspect.isroutine(o))
+    methods = inspect.getmembers(func, inspect.isroutine)
 
     for member in methods:
         try:

@@ -3,6 +3,7 @@ Module for tagging classes and their fields, as well as enumerating their fields
 serialization. We need to keep a registry of each classes fields as we don't know from a class definition in python
 which attributes are member variables.
 """
+from pybran.exceptions import BranRegistrationException
 from pybran.synchronized import synchronized
 
 
@@ -78,27 +79,116 @@ class Field:
         self.val = val
 
 
-class_registry = {}
-type_registry = {}
-name_registry = {}
+@synchronized
+class Registry:
+    """
+    Class for storing mirrored key:value pairs that can be queried later on. Can be provided with an autogeneration
+    function to automatically generate registry entries.
+    """
+    def __init__(self, default_value_generator: callable):
+        """
+        :param default_value_generator: The default Registry value generator that will be used when autoregistering
+        """
+        self.default_value_generator = default_value_generator
+
+        self.registry = {}
+
+    def get(self, key, autoregister=False):
+        """
+        Get an entry from the registry. Optionally, generate an entry if one is missing before returning.
+
+        Can raise a BranRegistrationException if no entry is present and autoregister=False
+
+        :param key: The key to query for
+        :param autoregister: Whether to automatically generate an entry for the key
+
+        :return: The registry entry for the key
+        """
+        if not self.contains(key):
+            if autoregister is True:
+                self.add(key)
+            else:
+                raise BranRegistrationException(f"No entry for {key} registered!", key)
+
+        return self.registry.get(key)
+
+    def add(self, key):
+        """
+        Add an entry to the registry (if not already present) and generate a value using the :default_value_generator:
+
+        :param key: The key to add an entry for
+        """
+        if not self.contains(key):
+            self.set(key, self.default_value_generator())
+            self.set(self.get(key), key)
+
+    def set(self, key, value):
+        """
+        Set a key in the registry to the specified value
+
+        :param key: The key to set
+        :param value: The value to set the key to
+        """
+        self.registry.__setitem__(key, value)
+
+    def contains(self, key):
+        """
+        Whether the registry contains an entry for the key
+
+        :param key: The key to check
+        :return: Whether the registry contains an entry for the key
+        :rtype: bool
+        """
+        return self.registry.__contains__(key)
+
+    def items(self):
+        """
+        Get the items contained within the registry
+
+        :return: The items contained within the registry
+        """
+        return self.registry.items()
+
+    def keys(self):
+        """
+        :return: All registry keys
+        """
+        return self.registry.keys()
+
+    def values(self):
+        """
+        :return: All registry entries
+        """
+        return self.registry.values()
+
+    def __len__(self, *args, **kwargs):
+        """
+        :return: The length of the registry
+        :rtype: int
+        """
+        return self.registry.__len__()
+
+
+class_registry = Registry(default_value_generator=lambda: Registry(default_value_generator=lambda: None))
+type_registry = Registry(default_value_generator=TypeId().get_id)
+name_registry = Registry(default_value_generator=lambda: Registry(default_value_generator=NameId().get_id))
 
 
 def register_class(cls: type, fields=None):
     """
-
     Register a class and its fields with the registries.
     Ensure its names and types are registered and enumerated if they do not already exist.
 
     :param cls: The class to register
     :param fields: Mapping of name : type representing the fields of the class. Used when manually registering a class.
     """
+
     if fields is None:
         fields = {}
 
-    class_registry.__setitem__(cls, {})
-    name_registry.__setitem__(cls, {})
-
-    register_type(cls)
+    class_registry.add(cls)
+    name_registry.add(cls)
+    type_registry.add(cls)
 
     NameId().reset()
 
@@ -132,26 +222,10 @@ def register_field(cls: type, name: str, _type: type):
     :param name: The name of the field
     :param _type: The type of the value of the field
     """
-    class_registry.get(cls).__setitem__(name, _type)
+    class_registry.get(cls).set(name, _type)
 
-    register_type(_type)
+    type_registry.add(_type)
     register_field_name(cls, name)
-
-
-def register_type(_type: type):
-    """
-
-    Ensures that type _type has an enumeration registered in the type_registry. This is used for serialization later,
-    only the enumeration/id of the type is used to save space if storing type is necessary.
-
-    If the enumeration does not yet exist for type _type, a new enumeration will be generated from
-    :cls:`TypeId <pybran.decorators.TypeId>`
-
-    :param _type: The type we're registering an enumeration for
-    """
-    if not type_registry.__contains__(_type):
-        type_registry.__setitem__(_type, TypeId().get_id())
-    type_registry.__setitem__(type_registry.get(_type), _type)
 
 
 def register_field_name(cls: type, name: str):
@@ -165,9 +239,7 @@ def register_field_name(cls: type, name: str):
     :param cls: The class who's field we're registering
     :param name: The name of the field we're registering an enumeration for
     """
-    if not name_registry.get(cls).__contains__(name):
-        name_registry.get(cls).__setitem__(name, NameId().get_id())
-    name_registry.get(cls).__setitem__(name_registry.get(cls).get(name), name)
+    name_registry.get(cls).add(name)
 
 
 def schema(cls):

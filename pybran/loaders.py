@@ -1,7 +1,6 @@
 """
 Module for bran Loaders
 """
-import struct
 from pathlib import Path
 
 from pybran.decorators import type_registry
@@ -50,10 +49,10 @@ class Loader:
         if kwargs.get("tagging") is True:
             cls_id = self.get_serializer(int).deserialize(self, int, data, **kwargs)
 
-            if not type_registry.__contains__(cls_id):
+            if not type_registry.contains(cls_id):
                 raise BranSerializerException(f"Type ID {cls_id} does not exist/is not registered!", cls_id)
 
-            cls = type_registry[cls_id]
+            cls = type_registry.get(cls_id)
 
         return self.get_serializer(cls).deserialize(self, cls, data, **kwargs)
 
@@ -72,10 +71,7 @@ class Loader:
 
         tag = b''
         if kwargs.get("tagging") is True:
-            if not type_registry.__contains__(cls):
-                raise BranSerializerException(f"Class {str(cls)} is not registered in the type registry!", cls)
-
-            tag = self.get_serializer(int).serialize(self, type_registry[cls], **kwargs)
+            tag = self.get_serializer(int).serialize(self, type_registry.get(cls, autoregister=True), **kwargs)
 
         return tag + self.get_serializer(cls).serialize(self, obj, **kwargs)
 
@@ -138,7 +134,7 @@ class Loader:
 
         return self._serializer_pool[serializer]
 
-    def _validate_path(self, path):
+    def _validate_path(self, path: str):
         """
         Internal method used to validate if a path exists. Raises [[bran.exceptions.BranFileException]] if the path
         is invalid

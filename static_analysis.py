@@ -8,11 +8,11 @@ from pylint import lint
 
 if __name__ == "__main__":
     print("Running PyLint...")
-    pylint_result = lint.Run(['pybran', '--output', 'pylint.json'], do_exit=False)
+    pylint_result = lint.Run(['pybran', '--output', 'pylint.json'], do_exit=False).linter.stats['global_note']
     print("Pylint Result:", pylint_result)
 
     print("Generating PyLint Badge")
-    pylint_badge = anybadge.Badge('pylint', round(pylint_result.linter.stats['global_note'], 1), thresholds={
+    pylint_badge = anybadge.Badge('pylint', round(pylint_result, 1), thresholds={
         2: 'red', 4: 'orange', 6: 'yellow', 8: 'green'
     })
     pylint_badge.write_badge('pylint.svg', overwrite=True)
