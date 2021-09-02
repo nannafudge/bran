@@ -28,4 +28,6 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: badges
-          path: pylint.svg coverage.svg
+          path: |
+            ${{ github.workspace }}/pylint.svg
+            ${{ github.workspace }}/coverage.svg

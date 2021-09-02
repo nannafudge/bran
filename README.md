@@ -10,7 +10,7 @@ this library.
 [![PyPI Versions](https://img.shields.io/pypi/pyversions/pybran.svg)](https://pypi.python.org/pypi/pybran/)
 [![PyPI Status](https://img.shields.io/pypi/status/pybran.svg)](https://pypi.python.org/pypi/pybran/)
 
-![CI Status](https://github.com/nannafudge/bran/actions/workflows/ci.yml/badge.svg)
+[![CI Status](https://github.com/nannafudge/bran/actions/workflows/ci.yml/badge.svg)](https://github.com/nannafudge/bran/actions/workflows/ci.yml)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
 ## Installing
