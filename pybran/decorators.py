@@ -112,14 +112,21 @@ class Registry:
 
         return self.registry.get(key)
 
-    def add(self, key):
+    def add(self, key, value=None):
         """
         Add an entry to the registry (if not already present) and generate a value using the :default_value_generator:
 
+        Can optionally provide the entry value for the registry key if needed (i.e. Registering a specific entity for a
+        key)
+
         :param key: The key to add an entry for
+        :param value: Optional value to specify (otherwise generated with default_value_generator)
         """
         if not self.contains(key):
-            self.set(key, self.default_value_generator())
+            if value is None:
+                value = self.default_value_generator()
+
+            self.set(key, value)
             self.set(self.get(key), key)
 
     def set(self, key, value):
