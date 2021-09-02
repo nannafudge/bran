@@ -170,8 +170,8 @@ loader.register(MyClass, DefaultSerializer)
 
 myobj = MyClass()
 
-serialized = loader.serialize(myobj, Tagging=True)
-myobj_deserialized = loader.deserialize(io.BytesIO(serialized), Tagging=True)
+serialized = loader.serialize(myobj, tagging=True)
+myobj_deserialized = loader.deserialize(io.BytesIO(serialized), tagging=True)
 ```
 
 #### Reading from a file
