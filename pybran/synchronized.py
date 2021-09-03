@@ -40,7 +40,7 @@ def synchronized(func, lock=None):
             setattr(synced_func, "__lock__", lock)
 
             return synced_func
-        except BaseException:
+        except (TypeError, AttributeError, RuntimeError):
             logger.warning("Unable to register function %s with lock %s", str(func), str(lock))
 
             return func

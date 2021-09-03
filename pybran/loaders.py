@@ -15,7 +15,8 @@ DEFAULT_SERIALIZER_REGISTRY = {
     str: StringSerializer,
     set: SetSerializer,
     dict: MappingSerializer,
-    list: ArraySerializer
+    list: ArraySerializer,
+    tuple: ArraySerializer
 }
 
 

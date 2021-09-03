@@ -114,6 +114,18 @@ class TestSerializers:
         assert (isinstance(mylist2, list))
         assert (mylist == mylist2)
 
+    def test_list_serializer_with_tuple(self):
+        mytuple = (1, True, "3")
+
+        loader = Loader()
+        loader.register(SimpleObject, DefaultSerializer)
+
+        serialized = loader.serialize(mytuple)
+        mytuple2 = loader.deserialize(io.BytesIO(serialized), tuple)
+
+        assert (isinstance(mytuple2, tuple))
+        assert (mytuple == mytuple2)
+
     def test_default_serializer(self):
         obj = SimpleObject()
         loader = Loader()

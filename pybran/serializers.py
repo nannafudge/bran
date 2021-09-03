@@ -203,4 +203,4 @@ class ArraySerializer(Serializer):
 
             obj[item_index] = loader.deserialize(data, type_registry.get(item_type), **kwargs)
 
-        return obj
+        return tuple(obj) if cls is tuple else obj
