@@ -1,6 +1,7 @@
 import pytest
 
-from pybran.decorators import schema, field, class_registry, type_registry, name_registry, register_class, refresh
+from pybran import schema, field, register_class, refresh, type_registry, name_registry, class_registry
+
 from pybran.exceptions import BranRegistrationException
 
 

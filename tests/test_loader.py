@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from pybran.decorators import schema, field
+from pybran import schema, field
+
 from pybran.exceptions import BranFileException, BranSerializerException
 from pybran.loaders import Loader
 from pybran.serializers import DefaultSerializer

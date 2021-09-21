@@ -1,6 +1,6 @@
 import concurrent.futures
 
-from pybran.decorators import Id, TypeId, NameId
+from pybran import Id, TypeId, NameId
 
 
 class TestAtomicId:
