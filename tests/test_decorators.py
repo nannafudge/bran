@@ -19,6 +19,12 @@ class NestedObject:
     test3 = field(MyObject())
 
 
+@schema
+class NestedObjectOnlyType:
+    test = field(int)
+    nested = field(MyObject)
+
+
 class ComplexClass:
     test = [1, 2, 3]
     test2 = {}
@@ -94,6 +100,17 @@ class TestDecorators:
         assert name_registry.get(NestedObject).get(1) == "test3"
 
         assert isinstance(NestedObject().test3, MyObject)
+
+    def test_register_object_only_type_info(self):
+        assert class_registry.contains(NestedObjectOnlyType)
+
+        assert class_registry.get(NestedObjectOnlyType).get("test") == int
+        assert class_registry.get(NestedObjectOnlyType).get("nested") == MyObject
+
+        assert name_registry.get(NestedObjectOnlyType).get("test") == 1
+        assert name_registry.get(NestedObjectOnlyType).get(1) == "test"
+        assert name_registry.get(NestedObjectOnlyType).get("nested") == 2
+        assert name_registry.get(NestedObjectOnlyType).get(2) == "nested"
 
     def test_add_existing_type(self):
         register_class(MyObject, {"test": int})

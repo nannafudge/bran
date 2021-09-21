@@ -124,7 +124,7 @@ class Registry:
         """
         if not self.contains(key):
             if value is None:
-                value = self.default_value_generator()
+                value = self.default_value_generator(key)
 
             self.set(key, value)
             self.set(self.get(key), key)
@@ -176,9 +176,9 @@ class Registry:
         return self.registry.__len__()
 
 
-class_registry = Registry(default_value_generator=lambda: Registry(default_value_generator=lambda: None))
-type_registry = Registry(default_value_generator=TypeId().get_id)
-name_registry = Registry(default_value_generator=lambda: Registry(default_value_generator=NameId().get_id))
+class_registry = Registry(default_value_generator=lambda k: Registry(default_value_generator=lambda k2: None))
+type_registry = Registry(default_value_generator=lambda k: TypeId().get_id())
+name_registry = Registry(default_value_generator=lambda k: Registry(default_value_generator=lambda k2: NameId().get_id()))
 
 
 def register_class(cls: type, fields=None):

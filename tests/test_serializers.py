@@ -25,6 +25,16 @@ class NestedObject:
     test = field(SimpleObject())
 
 
+@schema
+class NestedObjectWithReferencesOnly:
+    test1 = field(int)
+    test2 = field(NestedObject)
+
+    def __init__(self, test1: int, test2: NestedObject):
+        self.test1 = test1
+        self.test2 = test2
+
+
 class ObjectNoFields:
     pass
 
@@ -166,6 +176,20 @@ class TestSerializers:
         assert obj2.test.mapping == obj.test.mapping
         assert obj2.test.collection == obj.test.collection
         assert obj2.test.set == obj.test.set
+
+    def test_nested_object_references_only(self):
+        loader = Loader()
+
+        loader.register(SimpleObject, DefaultSerializer)
+        loader.register(NestedObject, DefaultSerializer)
+        loader.register(NestedObjectWithReferencesOnly, DefaultSerializer)
+
+        obj = NestedObjectWithReferencesOnly(1, NestedObject())
+        serialized = loader.serialize(obj)
+        obj2 = loader.deserialize(io.BytesIO(serialized), NestedObjectWithReferencesOnly)
+
+        assert obj.test1 == obj2.test1
+        assert type(obj.test2) == type(obj2.test2)
 
     def test_no_serializer_defined(self):
         loader = Loader()

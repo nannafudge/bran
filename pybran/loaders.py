@@ -70,7 +70,7 @@ class Loader:
         :return: An serialized instance of :obj:
         """
 
-        cls = type(obj)
+        cls = obj if isinstance(obj, type) else type(obj)
 
         tag = b''
         if kwargs.get("tagging") is True:
