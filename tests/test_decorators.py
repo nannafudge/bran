@@ -1,6 +1,6 @@
 import pytest
 
-from pybran import schema, field, register_class, refresh, type_registry, name_registry, class_registry
+from pybran import schema, field, register_class, refresh, type_registry, class_registry, register_alias
 
 from pybran.exceptions import BranRegistrationException
 
@@ -26,6 +26,12 @@ class NestedObjectOnlyType:
     nested = field(MyObject)
 
 
+@schema
+class ClassCustomAliases:
+    test = field(int, alias=b'\x05')
+    test2 = field(int)
+
+
 class ComplexClass:
     test = [1, 2, 3]
     test2 = {}
@@ -38,38 +44,39 @@ class NestedComplexClass:
 
 class TestDecorators:
     def test_field_decorator(self):
-        assert class_registry.contains(MyObject)
-        assert class_registry.get(MyObject).contains("test")
-        assert class_registry.get(MyObject).get("test") == int
+        class_definition = class_registry.get(MyObject)
+
+        assert class_definition.fields.contains("test")
+        assert class_definition.fields.get("test") == int
 
         assert type_registry.get(type_registry.get(int)) == int
-        assert name_registry.get(MyObject).get("test") == 1
-        assert name_registry.get(MyObject).get(1) == "test"
+
+        assert class_definition.aliases.get("test") == 1
+        assert class_definition.aliases.get(1) == "test"
 
         assert MyObject().test == 1
 
     def test_no_field_decorator(self):
-        assert class_registry.contains(MyObjectNoField)
-        assert not class_registry.get(MyObjectNoField)
+        class_definition = class_registry.get(MyObjectNoField)
 
-        assert name_registry.contains(MyObjectNoField)
-        assert not name_registry.get(MyObjectNoField)
+        assert len(class_definition.fields) == 0
+        assert len(class_definition.aliases) == 0
 
     def test_manually_register_class(self):
-        assert class_registry.contains(MyObjectNoField)
-        assert not class_registry.get(MyObjectNoField)
+        class_definition = class_registry.get(MyObjectNoField)
 
-        assert name_registry.contains(MyObjectNoField)
-        assert not name_registry.get(MyObjectNoField)
+        assert len(class_definition.fields) == 0
+        assert len(class_definition.aliases) == 0
 
         register_class(MyObjectNoField, {"test2": int})
 
-        assert class_registry.contains(MyObjectNoField)
-        assert class_registry.get(MyObjectNoField).get("test2") == int
+        class_definition_updated = class_registry.get(MyObjectNoField)
 
+        assert class_definition_updated.fields.get("test2") == int
         assert type_registry.get(type_registry.get(int)) == int
-        assert name_registry.get(MyObjectNoField).get("test2") == 1
-        assert name_registry.get(MyObjectNoField).get(1) == "test2"
+
+        assert class_definition_updated.aliases.get("test2") == 1
+        assert class_definition_updated.aliases.get(1) == "test2"
 
         assert MyObjectNoField().test2 == 2
 
@@ -77,41 +84,42 @@ class TestDecorators:
         register_class(NestedComplexClass, {"nested": NestedComplexClass.nested, "test": NestedComplexClass.test})
         register_class(ComplexClass, {"test": ComplexClass.test, "test2": ComplexClass.test2})
 
-        assert class_registry.contains(NestedComplexClass)
-        assert class_registry.contains(ComplexClass)
+        nested_class_definition = class_registry.get(NestedComplexClass)
+        complex_class_definition = class_registry.get(ComplexClass)
 
-        assert class_registry.get(NestedComplexClass).get("test") == int
-        assert class_registry.get(NestedComplexClass).get("nested") == ComplexClass
+        assert nested_class_definition.fields.get("test") == int
+        assert nested_class_definition.fields.get("nested") == ComplexClass
 
-        assert class_registry.get(ComplexClass).get("test") == list
-        assert class_registry.get(ComplexClass).get("test2") == dict
+        assert complex_class_definition.fields.get("test") == list
+        assert complex_class_definition.fields.get("test2") == dict
 
         assert type_registry.get(type_registry.get(NestedComplexClass)) == NestedComplexClass
         assert type_registry.get(type_registry.get(ComplexClass)) == ComplexClass
 
-        assert name_registry.get(ComplexClass).get("test") == 1
-        assert name_registry.get(NestedComplexClass).get("nested") == 1
+        assert nested_class_definition.aliases.get("nested") == 1
+        assert complex_class_definition.aliases.get("test") == 1
 
     def test_register_nested_object(self):
-        assert class_registry.contains(NestedObject)
-        assert class_registry.get(NestedObject).get("test3") == MyObject
+        class_definition = class_registry.get(NestedObject)
+        assert class_definition.fields.get("test3") == MyObject
 
         assert type_registry.get(type_registry.get(MyObject)) == MyObject
-        assert name_registry.get(NestedObject).get("test3") == 1
-        assert name_registry.get(NestedObject).get(1) == "test3"
+
+        assert class_definition.aliases.get("test3") == 1
+        assert class_definition.aliases.get(1) == "test3"
 
         assert isinstance(NestedObject().test3, MyObject)
 
     def test_register_object_only_type_info(self):
-        assert class_registry.contains(NestedObjectOnlyType)
+        class_definition = class_registry.get(NestedObjectOnlyType)
 
-        assert class_registry.get(NestedObjectOnlyType).get("test") == int
-        assert class_registry.get(NestedObjectOnlyType).get("nested") == MyObject
+        assert class_definition.fields.get("test") == int
+        assert class_definition.fields.get("nested") == MyObject
 
-        assert name_registry.get(NestedObjectOnlyType).get("test") == 1
-        assert name_registry.get(NestedObjectOnlyType).get(1) == "test"
-        assert name_registry.get(NestedObjectOnlyType).get("nested") == 2
-        assert name_registry.get(NestedObjectOnlyType).get(2) == "nested"
+        assert class_definition.aliases.get("test") == 1
+        assert class_definition.aliases.get(1) == "test"
+        assert class_definition.aliases.get("nested") == 2
+        assert class_definition.aliases.get(2) == "nested"
 
     def test_add_existing_type(self):
         register_class(MyObject, {"test": int})
@@ -142,11 +150,34 @@ class TestDecorators:
 
     def test_registry_refresh(self):
         type_registry_mapping = type_registry.items()
-        name_registry_mapping = name_registry.items()
         class_registry_mapping = class_registry.items()
 
         refresh()
 
         assert type_registry.items() == type_registry_mapping
-        assert name_registry.items() == name_registry_mapping
         assert class_registry.items() == class_registry_mapping
+
+    def test_custom_alias(self):
+        class_definition = class_registry.get(ClassCustomAliases)
+
+        assert class_definition.fields.get("test") == int
+
+        assert class_definition.aliases.get("test") == b'\x05'
+        assert class_definition.aliases.get(b'\x05') == "test"
+
+        assert class_definition.aliases.get("test2") == 1
+        assert class_definition.aliases.get(1) == "test2"
+
+
+
+    def test_custom_alias_register(self):
+        class_definition = class_registry.get(ClassCustomAliases)
+
+        class_definition.aliases.clear()
+
+        register_alias(ClassCustomAliases, "test", "newalias")
+
+        assert class_definition.fields.get("test") == int
+
+        assert class_definition.aliases.get("test") == "newalias"
+        assert class_definition.aliases.get("newalias") == "test"

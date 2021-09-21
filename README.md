@@ -59,6 +59,67 @@ register_class(MyClass2, {"test2": MyClass2.test2})
 register_class(MyClass, {"test": MyClass.test, "other": MyClass.other})
 ```
 
+### Registering field aliases
+
+Bran generates an enumeration for each field so it knows which field it's deserializing when doing so.
+Writing an enumeration is more efficient than writing the field name itself.
+
+If you want to override the enumeration bran generates, you can do so by specifying the `alias` parameter when
+registering a field. You can also manually register aliases if need be. Registering with annotations is done like so:
+
+```python
+@schema
+class MyClass:
+    test = field(1, alias=b'\x05')
+```
+
+Manual registration can be done like so:
+
+```python
+from pybran import register_class
+
+class MyClass:
+    test = 1
+    
+register_class(MyClass, {"test2": MyClass.test}, {"test2": b'\x05'})
+```
+
+Aliases and field information can be fetched from the `ClassDefinition` definition stored in the `class_registry`
+
+```python
+from pybran import class_registry, ClassDefinition
+
+@schema
+class MyClass:
+    test = field(1)
+
+class_definition: ClassDefinition = class_registry.get(MyClass)
+```
+
+The `ClassDefinition` object contains two internal `Registry` objects:
+
+- `fields`: Tracks the class fields and their types
+- `aliases`: Aliases registered for the class fields
+
+```python
+from pybran import class_registry, ClassDefinition
+
+@schema
+class MyClass:
+    test = field(1)
+    test2 = field(1, alias=b'\x05')
+
+class_definition: ClassDefinition = class_registry.get(MyClass)
+
+class_definition.fields.get("test") # Returns type(int)
+class_definition.fields.get("test2") # Returns type(int)
+
+class_definition.aliases.get("test") # Returns 1 (first registered enumeration)
+class_definition.aliases.get("test2") # Returns b'\x05'
+
+class_definition.aliases.get(1) # Returns "test"
+class_definition.aliases.get(b'\x05') # Returns "test2"
+```
 ### Serializing
 
 #### Registering Serializers
@@ -249,7 +310,7 @@ enumeration for the class itself and any unseen types contained within.
 ```python
 ...
 
-type_registry = Registry(default_value_generator=lambda k: TypeId().get_id())
+type_registry = Registry(lambda k: TypeId().get_id())
 
 ...
 ```

@@ -3,7 +3,7 @@ Module for Base Bran serializers
 """
 import struct
 
-from pybran.decorators import class_registry, type_registry, name_registry
+from pybran.decorators import class_registry, type_registry
 from pybran.exceptions import BranSerializerException
 
 
@@ -40,26 +40,30 @@ class DefaultSerializer(Serializer):
     Default class serializer
     """
     def serialize(self, loader, obj, **kwargs):
-        fields = class_registry.get(type(obj), None)
+        class_definition = class_registry.get(type(obj), None)
 
-        if fields is None:
-            raise BranSerializerException("No fields registered for type", obj)
+        if class_definition is None:
+            raise BranSerializerException("No Class Definition registered for type", type(obj))
 
         buffer = b''
-        for name in fields.keys():
-            buffer += loader.serialize(name_registry.get(type(obj)).get(name), **kwargs)
+        for name in class_definition.fields.keys():
+            buffer += loader.serialize(class_definition.aliases.get(name), **kwargs)
             buffer += loader.serialize(getattr(obj, name), **kwargs)
 
         return buffer
 
     def deserialize(self, loader, cls, data, **kwargs):
-        obj = cls.__new__(cls)
+        class_definition = class_registry.get(cls, None)
 
+        if class_definition is None:
+            raise BranSerializerException("No Class Definition registered for type", cls)
+
+        obj = cls.__new__(cls)
         size = len(data.getbuffer())
 
         while size - data.tell() >= 4:
-            name = name_registry.get(cls).get(loader.deserialize(data, int, **kwargs))
-            val = loader.deserialize(data, class_registry.get(cls).get(name), **kwargs)
+            name = class_definition.aliases.get(loader.deserialize(data, int, **kwargs))
+            val = loader.deserialize(data, class_definition.fields.get(name), **kwargs)
 
             setattr(obj, name, val)
 

@@ -71,12 +71,13 @@ class Field:
     Temporary class used to indicate a field has been autoregistered
     """
 
-    def __init__(self, val):
+    def __init__(self, val, alias=None):
         """
 
         :param val: The value of the field (used to determine field type and set field later post registration)
         """
         self.val = val
+        self.alias = alias
 
 
 @synchronized
@@ -85,6 +86,7 @@ class Registry:
     Class for storing mirrored key:value pairs that can be queried later on. Can be provided with an autogeneration
     function to automatically generate registry entries.
     """
+
     def __init__(self, default_value_generator: callable):
         """
         :param default_value_generator: The default Registry value generator that will be used when autoregistering
@@ -192,9 +194,26 @@ class Registry:
         return self.registry.__len__()
 
 
-class_registry = Registry(default_value_generator=lambda k: Registry(default_value_generator=lambda k2: None))
-type_registry = Registry(default_value_generator=lambda k: TypeId().get_id())
-name_registry = Registry(default_value_generator=lambda k: Registry(default_value_generator=lambda k2: NameId().get_id()))
+class ClassDefinition:
+    def __init__(self, cls, fields_registry: Registry = None, aliases_registry: Registry = None):
+        self.cls = cls
+
+        if not fields_registry:
+            fields_registry = Registry(lambda k: NameId().get_id())
+
+        if not aliases_registry:
+            aliases_registry = Registry(lambda k: None)
+
+        self.fields = fields_registry
+        self.aliases = aliases_registry
+
+    def clear(self):
+        self.fields.clear()
+        self.aliases.clear()
+
+
+class_registry = Registry(lambda cls: ClassDefinition(cls))
+type_registry = Registry(lambda k: TypeId().get_id())
 
 
 def refresh():
@@ -211,34 +230,44 @@ def refresh():
     for cls in class_registry.keys():
         if isinstance(cls, type):
             classes.__setitem__(cls, {})
-            for _field in class_registry.get(cls).items():
-                classes.get(cls).__setitem__(_field[0], _field[1])
+            classes.get(cls).__setitem__('fields', {})
+            classes.get(cls).__setitem__('aliases', {})
+
+            class_definition = class_registry.get(cls)
+
+            for _field in class_definition.fields.items():
+                classes.get(cls).get('fields').__setitem__(_field[0], _field[1])
+
+            for _alias in class_definition.aliases.items():
+                classes.get(cls).get('aliases').__setitem__(_alias[0], _alias[1])
 
     class_registry.clear()
     type_registry.clear()
-    name_registry.clear()
 
     TypeId().reset()
     NameId().reset()
 
-    for definition in classes.items():
-        register_class(definition[0], definition[1])
+    for cls, definition in classes.items():
+        register_class(cls, definition.get('fields'), definition.get('aliases'))
 
 
-def register_class(cls: type, fields=None):
+def register_class(cls: type, fields=None, aliases=None):
     """
     Register a class and its fields with the registries.
     Ensure its names and types are registered and enumerated if they do not already exist.
 
     :param cls: The class to register
     :param fields: Mapping of name : type representing the fields of the class. Used when manually registering a class.
+    :param aliases: Mapping of field name : alias
     """
 
     if fields is None:
         fields = {}
 
+    if aliases is None:
+        aliases = {}
+
     class_registry.add(cls)
-    name_registry.add(cls)
     type_registry.add(cls)
 
     NameId().reset()
@@ -250,6 +279,9 @@ def register_class(cls: type, fields=None):
             if isinstance(_field, Field):
                 autoregistered_fields.__setitem__(name, _field.val)
 
+                if _field.alias:
+                    aliases.__setitem__(name, _field.alias)
+
         fields.update(autoregistered_fields)
 
         # Ensure that the fields in the class are set to their intended values that field wrapped
@@ -260,8 +292,13 @@ def register_class(cls: type, fields=None):
         # Python allows for fields to be added willy nilly so whatever on this check
         # if not hasattr(cls, name):
         #    raise BranRegistrationException(f"Tried to register unrecognised field, {str(cls)} has no field {name}!", cls)
+        if not aliases.__contains__(name):
+            aliases.__setitem__(name, NameId().get_id())
 
         register_field(cls, name, val if isinstance(val, type) else type(val))
+
+    for field_name, alias in aliases.items():
+        register_alias(cls, field_name, alias)
 
 
 def register_field(cls: type, name: str, _type: type):
@@ -273,24 +310,25 @@ def register_field(cls: type, name: str, _type: type):
     :param name: The name of the field
     :param _type: The type of the value of the field
     """
-    class_registry.get(cls).set(name, _type)
-
+    class_registry.get(cls).fields.set(name, _type)
     type_registry.add(_type)
-    register_field_name(cls, name)
 
 
-def register_field_name(cls: type, name: str):
+def register_alias(cls: type, name: str, alias=None):
     """
-    Ensures that field :name: from the class :cls: has an enumeration registered in the name_registry.
-    This is used for serialization later, only the enumeration/id of the field name is used to save space.
 
-    If no enumeration exists for the field, then a new enumeration will be generated from
-    :cls:`NameId <pybran.decorators.NameId>`
+    Registers an Alias for a class field. This will be used when serializing instead of the actual name.
 
-    :param cls: The class who's field we're registering
-    :param name: The name of the field we're registering an enumeration for
+    If no alias is specified, an enumeration of the name will be generated.
+    This allows us to save space by writing this enumeration over writing the name itself.
+
+    :param cls: The class who's field we are registering
+    :param name: The name of the field
+    :param alias: OPTIONAL: The alias of the field
     """
-    name_registry.get(cls).add(name)
+
+    # If None is specified, an alias is autogenerated using the auto_generate_function provided to the Aliases registry
+    class_registry.get(cls).aliases.add(name, alias)
 
 
 def schema(cls):
@@ -306,7 +344,7 @@ def schema(cls):
     return cls
 
 
-def field(val):
+def field(val, alias=None):
     """
 
     Field value decorator, to be used to declare a member as a field member of a class
@@ -316,6 +354,7 @@ def field(val):
     once the Schema has registered this field.
 
     :param val: The value of the field
+    :param alias: OPTIONAL: Optional alias to use in place of the actual field name during serialization
     :return: The value wrapped in a Field object
     """
-    return Field(val)
+    return Field(val, alias)
