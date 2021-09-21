@@ -35,6 +35,12 @@ class Id:
 
         return self._id
 
+    def reset(self):
+        """
+        Resets the internal atomic counter
+        """
+        self._id = 0
+
 
 @synchronized
 class TypeId(Id):
@@ -58,12 +64,6 @@ class NameId(Id):
 
     def __new__(cls, *args, **kwargs):
         return super(NameId, cls).__new__(cls, *args, **kwargs)
-
-    def reset(self):
-        """
-        Resets the internal atomic counter
-        """
-        self._id = 0
 
 
 class Field:
@@ -138,6 +138,22 @@ class Registry:
         """
         self.registry.__setitem__(key, value)
 
+    def remove(self, key):
+        """
+        Remove a key from the registry, returns the associated removed value too if the key exists in the Registry
+
+        :param key: The key to remove
+        :return: The value removed, if present
+        """
+        if self.contains(key):
+            return self.registry.pop(key)
+
+    def clear(self):
+        """
+        Clear the registry of all values
+        """
+        self.registry.clear()
+
     def contains(self, key):
         """
         Whether the registry contains an entry for the key
@@ -179,6 +195,34 @@ class Registry:
 class_registry = Registry(default_value_generator=lambda k: Registry(default_value_generator=lambda k2: None))
 type_registry = Registry(default_value_generator=lambda k: TypeId().get_id())
 name_registry = Registry(default_value_generator=lambda k: Registry(default_value_generator=lambda k2: NameId().get_id()))
+
+
+def refresh():
+    """
+    Refresh the class registry and repopulate the type and name registry with the latest mapping values.
+
+    Useful when redefining the default value generators and using decorators, as the decorators are ran when importing
+    pybran, and redefining the default generators can only be done post-import.
+    """
+    classes = {}
+
+    # It should be fine to reuse the type definitions for fields since field type definitions should NEVER change at
+    # runtime. This also allows bespoke user mappings to be preserved (classes registered without decorators/manually).
+    for cls in class_registry.keys():
+        if isinstance(cls, type):
+            classes.__setitem__(cls, {})
+            for _field in class_registry.get(cls).items():
+                classes.get(cls).__setitem__(_field[0], _field[1])
+
+    class_registry.clear()
+    type_registry.clear()
+    name_registry.clear()
+
+    TypeId().reset()
+    NameId().reset()
+
+    for definition in classes.items():
+        register_class(definition[0], definition[1])
 
 
 def register_class(cls: type, fields=None):

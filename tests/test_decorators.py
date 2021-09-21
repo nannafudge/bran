@@ -1,6 +1,6 @@
 import pytest
 
-from pybran.decorators import schema, field, class_registry, type_registry, name_registry, register_class
+from pybran.decorators import schema, field, class_registry, type_registry, name_registry, register_class, refresh
 from pybran.exceptions import BranRegistrationException
 
 
@@ -125,3 +125,27 @@ class TestDecorators:
 
         with pytest.raises(BranRegistrationException):
             type_registry.get(UnregisteredClass)
+
+    def test_registry_remove(self):
+        class TestRegistryRemove:
+            pass
+
+        type_registry.add(TestRegistryRemove)
+        assert type_registry.contains(TestRegistryRemove)
+
+        registered_id = type_registry.get(TestRegistryRemove)
+        popped_id = type_registry.remove(TestRegistryRemove)
+        assert popped_id == registered_id
+
+        assert not type_registry.contains(TestRegistryRemove)
+
+    def test_registry_refresh(self):
+        type_registry_mapping = type_registry.items()
+        name_registry_mapping = name_registry.items()
+        class_registry_mapping = class_registry.items()
+
+        refresh()
+
+        assert type_registry.items() == type_registry_mapping
+        assert name_registry.items() == name_registry_mapping
+        assert class_registry.items() == class_registry_mapping

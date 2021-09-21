@@ -2,7 +2,7 @@ import io
 
 import pytest
 
-from pybran.decorators import schema, field
+from pybran.decorators import schema, field, refresh
 from pybran.exceptions import BranSerializerException
 from pybran.loaders import Loader
 from pybran.serializers import DefaultSerializer
