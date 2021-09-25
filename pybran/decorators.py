@@ -3,6 +3,9 @@ Module for tagging classes and their fields, as well as enumerating their fields
 serialization. We need to keep a registry of each classes fields as we don't know from a class definition in python
 which attributes are member variables.
 """
+import inspect
+from collections import OrderedDict
+
 from pybran.exceptions import BranRegistrationException
 from pybran.synchronized import synchronized
 
@@ -148,7 +151,10 @@ class Registry:
         :return: The value removed, if present
         """
         if self.contains(key):
-            return self.registry.pop(key)
+            val = self.registry.pop(key)
+            self.remove(val)
+
+            return val
 
     def clear(self):
         """
@@ -223,7 +229,7 @@ def refresh():
     Useful when redefining the default value generators and using decorators, as the decorators are ran when importing
     pybran, and redefining the default generators can only be done post-import.
     """
-    classes = {}
+    classes = OrderedDict()
 
     # It should be fine to reuse the type definitions for fields since field type definitions should NEVER change at
     # runtime. This also allows bespoke user mappings to be preserved (classes registered without decorators/manually).
@@ -251,7 +257,7 @@ def refresh():
         register_class(cls, definition.get('fields'), definition.get('aliases'))
 
 
-def register_class(cls: type, fields=None, aliases=None):
+def register_class(cls: type, fields=None, aliases=None, ignore=None):
     """
     Register a class and its fields with the registries.
     Ensure its names and types are registered and enumerated if they do not already exist.
@@ -259,6 +265,7 @@ def register_class(cls: type, fields=None, aliases=None):
     :param cls: The class to register
     :param fields: Mapping of name : type representing the fields of the class. Used when manually registering a class.
     :param aliases: Mapping of field name : alias
+    :param ignore: List of fields to ignore (useful for inheriting only certain parent schema fields)
     """
 
     if fields is None:
@@ -267,10 +274,18 @@ def register_class(cls: type, fields=None, aliases=None):
     if aliases is None:
         aliases = {}
 
+    if ignore is None:
+        ignore = []
+
     class_registry.add(cls)
     type_registry.add(cls)
 
     NameId().reset()
+
+    for base in inspect.getmro(cls):
+        if class_registry.contains(base):
+            fields.update(class_registry.get(base).fields.registry)
+            aliases.update(class_registry.get(base).aliases.registry)
 
     if not fields:
         autoregistered_fields = {}
@@ -292,12 +307,18 @@ def register_class(cls: type, fields=None, aliases=None):
         # Python allows for fields to be added willy nilly so whatever on this check
         # if not hasattr(cls, name):
         #    raise BranRegistrationException(f"Tried to register unrecognised field, {str(cls)} has no field {name}!", cls)
+        if name in ignore:
+            continue
+
         if not aliases.__contains__(name):
             aliases.__setitem__(name, NameId().get_id())
 
         register_field(cls, name, val if isinstance(val, type) else type(val))
 
     for field_name, alias in aliases.items():
+        if field_name in ignore or alias in ignore:
+            continue
+
         register_alias(cls, field_name, alias)
 
 

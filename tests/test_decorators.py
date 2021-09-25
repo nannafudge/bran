@@ -32,6 +32,11 @@ class ClassCustomAliases:
     test2 = field(int)
 
 
+@schema
+class InheritFields(ClassCustomAliases):
+    pass
+
+
 class ComplexClass:
     test = [1, 2, 3]
     test2 = {}
@@ -149,13 +154,13 @@ class TestDecorators:
         assert not type_registry.contains(TestRegistryRemove)
 
     def test_registry_refresh(self):
-        type_registry_mapping = type_registry.items()
-        class_registry_mapping = class_registry.items()
+        type_registry_mapping = type_registry.registry.copy()
+        class_registry_mapping = class_registry.registry.copy()
 
         refresh()
 
-        assert type_registry.items() == type_registry_mapping
-        assert class_registry.items() == class_registry_mapping
+        assert len(type_registry.items()) == len(type_registry_mapping.items())
+        assert len(class_registry.items()) == len(class_registry_mapping.items())
 
     def test_custom_alias(self):
         class_definition = class_registry.get(ClassCustomAliases)
@@ -168,7 +173,31 @@ class TestDecorators:
         assert class_definition.aliases.get("test2") == 1
         assert class_definition.aliases.get(1) == "test2"
 
+    def test_inherit_fields(self):
+        class_definition = class_registry.get(InheritFields)
 
+        assert class_definition.fields.get("test") == int
+
+        assert class_definition.aliases.get("test") == b'\x05'
+        assert class_definition.aliases.get(b'\x05') == "test"
+
+        assert class_definition.aliases.get("test2") == 1
+        assert class_definition.aliases.get(1) == "test2"
+
+    def test_ignore_fields(self):
+        class InheritIgnoreField(ClassCustomAliases):
+            pass
+
+        register_class(InheritIgnoreField, ignore=["test2"])
+
+        class_definition = class_registry.get(InheritIgnoreField)
+
+        assert class_definition.fields.get("test") == int
+        assert class_definition.aliases.get("test") == b'\x05'
+        assert class_definition.aliases.get(b'\x05') == "test"
+
+        assert not class_definition.fields.contains("test2")
+        assert not class_definition.aliases.contains("test2")
 
     def test_custom_alias_register(self):
         class_definition = class_registry.get(ClassCustomAliases)
