@@ -119,7 +119,7 @@ class Registry:
 
     def add(self, key, value=None):
         """
-        Add an entry to the registry (if not already present) and generate a value using the :default_value_generator:
+        Add an entry to the registry and generate a value using the :default_value_generator:
 
         Can optionally provide the entry value for the registry key if needed (i.e. Registering a specific entity for a
         key)
@@ -127,12 +127,11 @@ class Registry:
         :param key: The key to add an entry for
         :param value: Optional value to specify (otherwise generated with default_value_generator)
         """
-        if not self.contains(key):
-            if value is None:
-                value = self.default_value_generator(key)
+        if value is None:
+            value = self.default_value_generator(key)
 
-            self.set(key, value)
-            self.set(self.get(key), key)
+        self.set(key, value)
+        self.set(self.get(key), key)
 
     def set(self, key, value):
         """
@@ -222,7 +221,7 @@ class_registry = Registry(lambda cls: ClassDefinition(cls))
 type_registry = Registry(lambda k: TypeId().get_id())
 
 
-def refresh():
+def refresh(refresh_type_registry=False):
     """
     Refresh the class registry and repopulate the type and name registry with the latest mapping values.
 
@@ -248,10 +247,11 @@ def refresh():
                 classes.get(cls).get('aliases').__setitem__(_alias[0], _alias[1])
 
     class_registry.clear()
-    type_registry.clear()
-
-    TypeId().reset()
     NameId().reset()
+
+    if refresh_type_registry:
+        type_registry.clear()
+        TypeId().reset()
 
     for cls, definition in classes.items():
         register_class(cls, definition.get('fields'), definition.get('aliases'))
@@ -278,7 +278,9 @@ def register_class(cls: type, fields=None, aliases=None, ignore=None):
         ignore = []
 
     class_registry.add(cls)
-    type_registry.add(cls)
+
+    if not type_registry.contains(cls):
+        type_registry.add(cls)
 
     NameId().reset()
 
@@ -332,7 +334,8 @@ def register_field(cls: type, name: str, _type: type):
     :param _type: The type of the value of the field
     """
     class_registry.get(cls).fields.set(name, _type)
-    type_registry.add(_type)
+    if not type_registry.contains(_type):
+        type_registry.add(_type)
 
 
 def register_alias(cls: type, name: str, alias=None):

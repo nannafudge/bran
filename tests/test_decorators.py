@@ -48,6 +48,15 @@ class NestedComplexClass:
 
 
 class TestDecorators:
+    def test_registry_refresh(self):
+        type_registry_mapping = type_registry.registry.copy()
+        class_registry_mapping = class_registry.registry.copy()
+
+        refresh()
+
+        assert len(type_registry.items()) == len(type_registry_mapping.items())
+        assert len(class_registry.items()) == len(class_registry_mapping.items())
+
     def test_field_decorator(self):
         class_definition = class_registry.get(MyObject)
 
@@ -152,15 +161,6 @@ class TestDecorators:
         assert popped_id == registered_id
 
         assert not type_registry.contains(TestRegistryRemove)
-
-    def test_registry_refresh(self):
-        type_registry_mapping = type_registry.registry.copy()
-        class_registry_mapping = class_registry.registry.copy()
-
-        refresh()
-
-        assert len(type_registry.items()) == len(type_registry_mapping.items())
-        assert len(class_registry.items()) == len(class_registry_mapping.items())
 
     def test_custom_alias(self):
         class_definition = class_registry.get(ClassCustomAliases)
